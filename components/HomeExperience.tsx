@@ -211,7 +211,7 @@ export default function HomeExperience() {
           <p data-hero-line className={styles.eyebrow}>
             GTC · Garg Trading Company
           </p>
-          <h1 data-hero-line>Reliable packaging solutions for business growth and delivery confidence.</h1>
+          <h1 data-hero-line>Smarter packaging. Stronger brands. Faster delivery.</h1>
           <p data-hero-line className={styles.heroText}>
             Smarter packaging. Stronger brands. Faster delivery.
           </p>
