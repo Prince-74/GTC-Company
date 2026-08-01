@@ -1,0 +1,17 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#0F172A"/>
+  <rect x="80" y="120" width="1440" height="660" rx="28" fill="#111827" stroke="#F59E0B" stroke-width="4"/>
+  <rect x="140" y="190" width="460" height="260" rx="18" fill="#1F2937"/>
+  <rect x="640" y="190" width="300" height="260" rx="18" fill="#374151"/>
+  <rect x="970" y="190" width="340" height="260" rx="18" fill="#1F2937"/>
+  <rect x="140" y="490" width="1160" height="180" rx="18" fill="#273449"/>
+  <rect x="200" y="220" width="120" height="120" rx="12" fill="#F59E0B"/>
+  <rect x="340" y="220" width="120" height="120" rx="12" fill="#FCD34D"/>
+  <rect x="700" y="220" width="180" height="120" rx="12" fill="#F59E0B"/>
+  <rect x="1040" y="220" width="180" height="120" rx="12" fill="#FCD34D"/>
+  <path d="M220 610H1120" stroke="#F59E0B" stroke-width="10" stroke-linecap="round"/>
+  <path d="M220 660H1020" stroke="#FCD34D" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="1320" cy="590" r="70" fill="#F59E0B" fill-opacity="0.28"/>
+  <circle cx="1320" cy="590" r="36" fill="#F59E0B"/>
+  <text x="180" y="790" fill="#F9FAFB" font-family="Arial, sans-serif" font-size="44" font-weight="700">GTC Packaging Facility</text>
+</svg>

@@ -1,0 +1,60 @@
+:root {
+  --black: #070706;
+  --charcoal: #151514;
+  --graphite: #22211f;
+  --kraft: #b17642;
+  --orange: #f47a22;
+  --amber: #ffb25b;
+  --steel: #9ba6a5;
+  --soft: #ece8e1;
+  --muted: #a7a29a;
+  --line: rgba(255, 255, 255, 0.12);
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-manrope), system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: auto;
+  background: var(--black);
+}
+
+body {
+  margin: 0;
+  color: var(--soft);
+  background: var(--black);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+::selection {
+  color: var(--black);
+  background: var(--amber);
+}
