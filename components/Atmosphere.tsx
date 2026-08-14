@@ -4,7 +4,11 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import styles from "./Atmosphere.module.css";
 
-export default function Atmosphere() {
+interface AtmosphereProps {
+  theme?: "dark" | "light";
+}
+
+export default function Atmosphere({ theme = "dark" }: AtmosphereProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -14,22 +18,23 @@ export default function Atmosphere() {
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
     renderer.setSize(host.clientWidth, host.clientHeight);
+    host.innerHTML = "";
     host.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, host.clientWidth / host.clientHeight, 0.1, 100);
     camera.position.z = 8;
 
-    const count = 420;
+    const count = theme === "dark" ? 380 : 180;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
-    const colorA = new THREE.Color("#f47a22");
-    const colorB = new THREE.Color("#c9beb0");
+    const colorA = new THREE.Color(theme === "dark" ? "#f47a22" : "#d97706");
+    const colorB = new THREE.Color(theme === "dark" ? "#9ca3af" : "#cbd5e1");
 
     for (let index = 0; index < count; index += 1) {
-      positions[index * 3] = (Math.random() - 0.5) * 14;
-      positions[index * 3 + 1] = (Math.random() - 0.5) * 7;
-      positions[index * 3 + 2] = (Math.random() - 0.5) * 8;
+      positions[index * 3] = (Math.random() - 0.5) * 16;
+      positions[index * 3 + 1] = (Math.random() - 0.5) * 9;
+      positions[index * 3 + 2] = (Math.random() - 0.5) * 10;
       const mixed = colorA.clone().lerp(colorB, Math.random() * 0.75);
       colors[index * 3] = mixed.r;
       colors[index * 3 + 1] = mixed.g;
@@ -41,9 +46,9 @@ export default function Atmosphere() {
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
     const material = new THREE.PointsMaterial({
-      size: 0.035,
+      size: theme === "dark" ? 0.035 : 0.025,
       transparent: true,
-      opacity: 0.62,
+      opacity: theme === "dark" ? 0.55 : 0.28,
       vertexColors: true,
       depthWrite: false
     });
@@ -67,8 +72,8 @@ export default function Atmosphere() {
     };
 
     const animate = () => {
-      particles.rotation.y += 0.0008;
-      particles.rotation.x += 0.0003;
+      particles.rotation.y += 0.0006;
+      particles.rotation.x += 0.0002;
       camera.position.x += (pointer.x - camera.position.x) * 0.02;
       camera.position.y += (-pointer.y - camera.position.y) * 0.02;
       renderer.render(scene, camera);
@@ -86,9 +91,11 @@ export default function Atmosphere() {
       geometry.dispose();
       material.dispose();
       renderer.dispose();
-      renderer.domElement.remove();
+      if (renderer.domElement.parentElement) {
+        renderer.domElement.remove();
+      }
     };
-  }, []);
+  }, [theme]);
 
   return <div className={styles.atmosphere} ref={hostRef} aria-hidden="true" />;
 }

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || "sales@gtcpackaging.in";
+    const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || "garg00445@gmail.com";
     const formId = process.env.FORMSPREE_FORM_ID || "xaqrgjay";
     const message = buildInquiryMessage(body);
 
