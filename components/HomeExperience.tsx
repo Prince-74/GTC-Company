@@ -621,13 +621,31 @@ export default function HomeExperience() {
           {products.map((prod) => (
             <article className={styles.productCard} key={prod.id} data-reveal>
               <div className={styles.productImgBox}>
-                <Image
-                  src={prod.image}
-                  alt={prod.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className={styles.productImg}
-                />
+                <div className={prod.images ? styles.productImageGrid : styles.productImageSingle}>
+                  {(prod.images || [prod.image]).map((image, index) => (
+                    <button
+                      key={image}
+                      type="button"
+                      className={styles.productImageCell}
+                      onClick={() =>
+                        setActiveGalleryImg({
+                          src: image,
+                          title: prod.title,
+                          description: prod.description
+                        })
+                      }
+                      aria-label={`Expand ${prod.title} image ${index + 1}`}
+                    >
+                      <Image
+                        src={image}
+                        alt={`${prod.title}${prod.images ? ` ${index + 1}` : ""}`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className={styles.productImg}
+                      />
+                    </button>
+                  ))}
+                </div>
                 <span className={styles.productBadge}>{prod.badge}</span>
               </div>
               <div className={styles.productBody}>

@@ -18,6 +18,17 @@ import {
   FaWarehouse
 } from "react-icons/fa6";
 
+type Product = {
+  id: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  images?: string[];
+  description: string;
+  specs: string[];
+  badge: string;
+};
+
 export const siteConfig = {
   name: "GTC | Garg Trading Company",
   shortName: "GTC",
@@ -37,7 +48,7 @@ export const siteConfig = {
   clientsCount: "250+"
 };
 
-export const products = [
+export const products: Product[] = [
   {
     id: "corrugated-cartons",
     title: "Master Corrugated Cartons",
@@ -89,8 +100,8 @@ export const products = [
     badge: "Heavy Load"
   },
   {
-    id: "food-fmcg-packaging",
-    title: "Food & Grocery Outer Boxes",
+    id: "Sports-items-packaging",
+    title: "Sports item Outer Boxes",
     subtitle: "Clean & Odorless Storage Boxes",
     image: "/images/product_img/WhatsApp Image 2026-08-13 at 10.47.09 PM.jpeg",
     description:
@@ -117,6 +128,20 @@ export const products = [
       "Custom cardboard dividers and layer pads to stop glass bottles, delicate components, and small items from hitting each other inside the box.",
     specs: ["Grid Dividers", "Layer Separation Pads", "Vibration Protection", "100% Recyclable"],
     badge: "Item Protection"
+  },
+  {
+    id: "kraft-paper-rolls",
+    title: "Paper Rolls",
+    subtitle: "Quality Paper Rolls for Corrugated Box Manufacturing",
+    image: "/images/product_img/roll img 1.jpeg",
+    images: [
+      "/images/product_img/roll img 1.jpeg",
+      "/images/product_img/roll img 2.jpeg"
+    ],
+    description:
+      "Quality kraft paper rolls used to manufacture strong, reliable corrugated packaging.",
+    specs: ["Strong Kraft Paper", "Suitable for Corrugation", "Reliable Paper Quality", "Bulk Supply"],
+    badge: "Raw Material"
   }
 ];
 
@@ -151,7 +176,7 @@ export const factoryGallery = [
 export const ownerProfile = {
   name: "Sonu Garg",
   title: "Founder & Owner",
-  image: "/images/owner_img/WhatsApp Image 2026-08-13 at 10.55.51 PM.jpeg",
+  image: "/images/owner_img/WhatsApp Image 2026-08-17 at 20.37.20.jpeg",
   experience: "6+ Years of Hands-on Box Manufacturing Experience",
   quote:
     "Our promise is simple: strong boxes, fair factory prices, and on-time delivery. We treat every customer's order with personal care so your goods reach safely every time.",
