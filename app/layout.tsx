@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -115,6 +116,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
         />
         {children}
+        <Analytics />
       </body>
     </html>
   );
