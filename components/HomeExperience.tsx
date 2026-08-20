@@ -58,9 +58,29 @@ type InquiryState = {
   requirements: string;
 };
 
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set(["pdf", "ai", "eps", "svg", "png", "jpg", "jpeg"]);
+const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const INITIAL_INQUIRY_FORM: InquiryState = {
+  company: "",
+  name: "",
+  phone: "",
+  email: "",
+  industry: "Food & Beverage",
+  boxType: "Master Corrugated Cartons",
+  ply: "5-Ply",
+  length: "0",
+  width: "0",
+  height: "0",
+  unit: "inch",
+  quantity: "0",
+  printing: "Yes (Brand Logo)",
+  requirements: ""
+};
+
 export default function HomeExperience() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
 
   // Theme State: 'dark' | 'light'
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -87,27 +107,21 @@ export default function HomeExperience() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Quotation Form State
-  const [form, setForm] = useState<InquiryState>({
-    company: "",
-    name: "",
-    phone: "",
-    email: "",
-    industry: "Food & Beverage",
-    boxType: "Master Corrugated Cartons",
-    ply: "5-Ply",
-    length: "14",
-    width: "10",
-    height: "8",
-    unit: "inch",
-    quantity: "1000",
-    printing: "Yes (Brand Logo)",
-    requirements: ""
-  });
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState<InquiryState>(INITIAL_INQUIRY_FORM);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [activeSection, setActiveSection] = useState("top");
+
+  const navigationItems = [
+    { href: "#customizer", label: "3D Box Studio" },
+    { href: "#products", label: "Our Boxes" },
+    { href: "#factory", label: "Factory Photos" },
+    { href: "#about", label: "About Us" },
+    { href: "#process", label: "How It Works" },
+    { href: "#faq", label: "FAQ" }
+  ];
 
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
@@ -125,6 +139,33 @@ export default function HomeExperience() {
       document.documentElement.setAttribute("data-theme", initialTheme);
     }
   }, []);
+
+  useEffect(() => {
+    const sections = ["top", ...navigationItems.map((item) => item.href.slice(1)), "inquiry"]
+      .map((id) => document.getElementById(id))
+      .filter((section): section is HTMLElement => section !== null);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleSections = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => second.intersectionRatio - first.intersectionRatio);
+
+        if (visibleSections[0]) {
+          setActiveSection(visibleSections[0].target.id);
+        }
+      },
+      { rootMargin: "-18% 0px -65% 0px", threshold: [0, 0.25, 0.5, 1] }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  const handleNavigation = (sectionId: string, closeMobileMenu = false) => {
+    setActiveSection(sectionId);
+    if (closeMobileMenu) setMobileMenuOpen(false);
+  };
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -194,7 +235,29 @@ export default function HomeExperience() {
 
   const updateForm = (key: keyof InquiryState, value: string) => {
     setForm((curr) => ({ ...curr, [key]: value }));
-    setErrors((curr) => ({ ...curr, [key]: "" }));
+    setErrors((curr) => ({
+      ...curr,
+      [key]: "",
+      ...(key === "length" || key === "width" || key === "height" ? { dimensions: "" } : {})
+    }));
+  };
+
+  const showInquiryValidationError = (event: FormEvent<HTMLFormElement>) => {
+    const field = event.target as HTMLInputElement;
+    const fieldErrors: Record<string, string> = {
+      company: "Company or business name is required",
+      name: "Contact person name is required",
+      email: field.validity.valueMissing ? "Email address is required" : "Please enter a valid email address",
+      phone: field.validity.valueMissing ? "Phone / WhatsApp number is required" : "Please enter a valid 10-digit Indian mobile number",
+      length: "Length must be greater than 0",
+      width: "Width must be greater than 0",
+      height: "Height must be greater than 0",
+      quantity: "Quantity must be at least 1"
+    };
+    const errorKey = ["length", "width", "height"].includes(field.id) ? "dimensions" : field.id;
+    const message = fieldErrors[field.id];
+
+    if (message) setErrors((current) => ({ ...current, [errorKey]: message }));
   };
 
   const handleApplyStudioSpecs = () => {
@@ -227,11 +290,26 @@ export default function HomeExperience() {
   const submitInquiry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
-    if (!form.company.trim()) nextErrors.company = "Please enter your business or company name";
-    if (!form.name.trim()) nextErrors.name = "Please enter contact person name";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) nextErrors.email = "Please enter a valid email";
-    if (!/^[0-9+\-\s()]{7,}$/.test(form.phone)) nextErrors.phone = "Please enter a valid phone or WhatsApp number";
-    if (!form.quantity.trim() || Number(form.quantity) <= 0) nextErrors.quantity = "Please enter estimated quantity";
+    const email = form.email.trim();
+    const phone = form.phone.trim();
+    const quantity = Number(form.quantity);
+    const dimensions = [form.length, form.width, form.height];
+    if (form.company.trim().length < 2) nextErrors.company = "Company or business name is required";
+    if (form.name.trim().length < 2) nextErrors.name = "Contact person name is required";
+    if (!email) nextErrors.email = "Email address is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = "Please enter a valid email address";
+    else if (email.length > 254) nextErrors.email = "Email address is too long";
+    if (!/^[6-9]\d{9}$/.test(phone)) nextErrors.phone = "Please enter a valid 10-digit Indian mobile number";
+    if (!Number.isInteger(quantity) || quantity <= 0) nextErrors.quantity = "Quantity must be at least 1";
+    if (dimensions.some((value) => !value.trim() || !Number.isFinite(Number(value)) || Number(value) <= 0)) {
+      nextErrors.dimensions = "Please enter positive length, width, and height";
+    }
+    if (selectedFile) {
+      const extension = selectedFile.name.split(".").pop()?.toLowerCase();
+      if (!extension || !ALLOWED_ATTACHMENT_EXTENSIONS.has(extension) || selectedFile.size > MAX_ATTACHMENT_SIZE_BYTES) {
+        nextErrors.attachment = "Please choose a PDF, AI, EPS, SVG, PNG, or JPG file smaller than 10 MB";
+      }
+    }
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length === 0) {
@@ -239,14 +317,12 @@ export default function HomeExperience() {
       setSubmitMessage("");
 
       try {
+        const payload = new FormData();
+        Object.entries({ ...form, source: "GTC Website" }).forEach(([key, value]) => payload.append(key, value));
+        if (selectedFile) payload.append("attachment", selectedFile);
         const response = await fetch("/api/inquiry", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...form,
-            source: "GTC Website",
-            fileAttached: selectedFile || "None"
-          })
+          body: payload
         });
 
         const data = await response.json();
@@ -254,10 +330,16 @@ export default function HomeExperience() {
           throw new Error(data?.message || "Unable to submit inquiry right now.");
         }
 
-        setSubmitted(true);
-        setSubmitMessage("Thank you! Your quotation request has been received. Our team will review your box size and share the best factory price shortly.");
+        setForm({ ...INITIAL_INQUIRY_FORM });
+        setSelectedFile(null);
+        setErrors({});
+        if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+        setSubmitMessage(
+          data?.attachmentAccepted === false
+            ? data.message
+            : "Thank you! Your quotation request has been received. Our team will review your box size and share the best factory price shortly."
+        );
       } catch (error) {
-        setSubmitted(false);
         setSubmitMessage(error instanceof Error ? error.message : "Unable to process request right now. Please WhatsApp us directly for an instant quote.");
       } finally {
         setIsSubmitting(false);
@@ -291,12 +373,20 @@ export default function HomeExperience() {
         </a>
 
         <nav className={styles.navLinks} aria-label="Primary navigation">
-          <a href="#customizer">3D Box Studio</a>
-          <a href="#products">Our Boxes</a>
-          <a href="#factory">Factory Photos</a>
-          <a href="#about">About Us</a>
-          <a href="#process">How It Works</a>
-          <a href="#faq">FAQ</a>
+          {navigationItems.map((item) => {
+            const sectionId = item.href.slice(1);
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                className={activeSection === sectionId ? styles.navLinkActive : ""}
+                onClick={() => handleNavigation(sectionId)}
+                aria-current={activeSection === sectionId ? "location" : undefined}
+              >
+                {item.label}
+              </a>
+            );
+          })}
         </nav>
 
         <div className={styles.navActions}>
@@ -310,7 +400,11 @@ export default function HomeExperience() {
             {mounted && theme === "dark" ? <FaSun aria-hidden="true" /> : <FaMoon aria-hidden="true" />}
           </button>
 
-          <a href="#inquiry" className={styles.quoteNavBtn}>
+          <a
+            href="#inquiry"
+            className={`${styles.quoteNavBtn} ${activeSection === "inquiry" ? styles.quoteNavBtnActive : ""}`}
+            onClick={() => handleNavigation("inquiry")}
+          >
             Get Factory Price <FaArrowRight aria-hidden="true" />
           </a>
 
@@ -367,30 +461,28 @@ export default function HomeExperience() {
             </div>
 
             <nav className={styles.mobileDrawerNav}>
-              {[
-                { href: "#customizer", label: "3D Box Studio" },
-                { href: "#products", label: "Our Boxes" },
-                { href: "#factory", label: "Factory Photos" },
-                { href: "#about", label: "About Us" },
-                { href: "#process", label: "How It Works" },
-                { href: "#faq", label: "FAQ" }
-              ].map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span>{item.label}</span>
-                  <FaArrowRight aria-hidden="true" />
-                </a>
-              ))}
+              {navigationItems.map((item) => {
+                const sectionId = item.href.slice(1);
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className={activeSection === sectionId ? styles.mobileNavLinkActive : ""}
+                    onClick={() => handleNavigation(sectionId, true)}
+                    aria-current={activeSection === sectionId ? "location" : undefined}
+                  >
+                    <span>{item.label}</span>
+                    <FaArrowRight aria-hidden="true" />
+                  </a>
+                );
+              })}
             </nav>
 
             <div className={styles.mobileDrawerActions}>
               <a
                 href="#inquiry"
                 className={styles.primaryButton}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={() => handleNavigation("inquiry", true)}
               >
                 Get Factory Price <FaArrowRight aria-hidden="true" />
               </a>
@@ -932,59 +1024,91 @@ export default function HomeExperience() {
             </a>
           </div>
 
-          <form className={styles.quoteForm} onSubmit={submitInquiry} data-reveal noValidate>
+          <form
+            className={styles.quoteForm}
+            onSubmit={submitInquiry}
+            onInvalidCapture={showInquiryValidationError}
+            data-reveal
+            aria-describedby="form-status"
+          >
             <div className={styles.formRow}>
               <div className={styles.formField}>
-                <label>Company / Business Name *</label>
+                <label htmlFor="company">Company / Business Name *</label>
                 <input
+                  id="company"
                   type="text"
                   placeholder="e.g. Acme Enterprises"
+                  required
+                  minLength={2}
+                  maxLength={120}
                   value={form.company}
                   onChange={(e) => updateForm("company", e.target.value)}
+                  aria-invalid={Boolean(errors.company)}
+                  aria-describedby={errors.company ? "company-error" : undefined}
                 />
-                {errors.company && <span className={styles.formError}>{errors.company}</span>}
+                {errors.company && <span id="company-error" className={styles.formError} role="alert">{errors.company}</span>}
               </div>
 
               <div className={styles.formField}>
-                <label>Your Name *</label>
+                <label htmlFor="name">Your Name *</label>
                 <input
+                  id="name"
                   type="text"
                   placeholder="e.g. Rahul Sharma"
+                  required
+                  minLength={2}
+                  maxLength={80}
                   value={form.name}
                   onChange={(e) => updateForm("name", e.target.value)}
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? "name-error" : undefined}
                 />
-                {errors.name && <span className={styles.formError}>{errors.name}</span>}
+                {errors.name && <span id="name-error" className={styles.formError} role="alert">{errors.name}</span>}
               </div>
             </div>
 
             <div className={styles.formRow}>
               <div className={styles.formField}>
-                <label>Email Address *</label>
+                <label htmlFor="email">Email Address *</label>
                 <input
+                  id="email"
                   type="email"
                   placeholder="name@company.com"
+                  required
+                  maxLength={254}
                   value={form.email}
                   onChange={(e) => updateForm("email", e.target.value)}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? "email-error" : undefined}
                 />
-                {errors.email && <span className={styles.formError}>{errors.email}</span>}
+                {errors.email && <span id="email-error" className={styles.formError} role="alert">{errors.email}</span>}
               </div>
 
               <div className={styles.formField}>
-                <label>Phone / WhatsApp Number *</label>
+                <label htmlFor="phone">Phone / WhatsApp Number *</label>
                 <input
+                  id="phone"
                   type="tel"
-                  placeholder="+91 7060443193"
+                  placeholder="e.g. 9565000110"
+                  inputMode="numeric"
+                  maxLength={10}
+                  minLength={10}
+                  pattern="[6-9][0-9]{9}"
+                  required
                   value={form.phone}
                   onChange={(e) => updateForm("phone", e.target.value)}
+                  aria-invalid={Boolean(errors.phone)}
+                  aria-describedby={errors.phone ? "phone-error" : undefined}
                 />
-                {errors.phone && <span className={styles.formError}>{errors.phone}</span>}
+                {errors.phone && <span id="phone-error" className={styles.formError} role="alert">{errors.phone}</span>}
               </div>
             </div>
 
             <div className={styles.formRow}>
               <div className={styles.formField}>
-                <label>Box Style</label>
+                <label htmlFor="box-type">Box Style</label>
                 <select
+                  id="box-type"
                   value={form.boxType}
                   onChange={(e) => updateForm("boxType", e.target.value)}
                 >
@@ -997,8 +1121,9 @@ export default function HomeExperience() {
               </div>
 
               <div className={styles.formField}>
-                <label>Board Thickness / Ply</label>
+                <label htmlFor="ply">Board Thickness / Ply</label>
                 <select
+                  id="ply"
                   value={form.ply}
                   onChange={(e) => updateForm("ply", e.target.value)}
                 >
@@ -1013,49 +1138,71 @@ export default function HomeExperience() {
 
             <div className={styles.formRow3}>
               <div className={styles.formField}>
-                <label>Length ({form.unit})</label>
+                <label htmlFor="length">Length ({form.unit}) *</label>
                 <input
+                  id="length"
                   type="number"
                   step="any"
+                  min="0.01"
+                  required
                   value={form.length}
                   onChange={(e) => updateForm("length", e.target.value)}
+                  aria-invalid={Boolean(errors.dimensions)}
+                  aria-describedby={errors.dimensions ? "dimensions-error" : undefined}
                 />
               </div>
               <div className={styles.formField}>
-                <label>Width ({form.unit})</label>
+                <label htmlFor="width">Width ({form.unit}) *</label>
                 <input
+                  id="width"
                   type="number"
                   step="any"
+                  min="0.01"
+                  required
                   value={form.width}
                   onChange={(e) => updateForm("width", e.target.value)}
+                  aria-invalid={Boolean(errors.dimensions)}
+                  aria-describedby={errors.dimensions ? "dimensions-error" : undefined}
                 />
               </div>
               <div className={styles.formField}>
-                <label>Height ({form.unit})</label>
+                <label htmlFor="height">Height ({form.unit}) *</label>
                 <input
+                  id="height"
                   type="number"
                   step="any"
+                  min="0.01"
+                  required
                   value={form.height}
                   onChange={(e) => updateForm("height", e.target.value)}
+                  aria-invalid={Boolean(errors.dimensions)}
+                  aria-describedby={errors.dimensions ? "dimensions-error" : undefined}
                 />
               </div>
             </div>
 
             <div className={styles.formRow}>
               <div className={styles.formField}>
-                <label>Quantity of Boxes *</label>
+                <label htmlFor="quantity">Quantity of Boxes *</label>
                 <input
+                  id="quantity"
                   type="number"
                   placeholder="e.g. 1000"
+                  min="1"
+                  step="1"
+                  required
                   value={form.quantity}
                   onChange={(e) => updateForm("quantity", e.target.value)}
+                  aria-invalid={Boolean(errors.quantity)}
+                  aria-describedby={errors.quantity ? "quantity-error" : undefined}
                 />
-                {errors.quantity && <span className={styles.formError}>{errors.quantity}</span>}
+                {errors.quantity && <span id="quantity-error" className={styles.formError} role="alert">{errors.quantity}</span>}
               </div>
 
               <div className={styles.formField}>
-                <label>Printing Requirement</label>
+                <label htmlFor="printing">Printing Requirement</label>
                 <select
+                  id="printing"
                   value={form.printing}
                   onChange={(e) => updateForm("printing", e.target.value)}
                 >
@@ -1066,22 +1213,33 @@ export default function HomeExperience() {
               </div>
             </div>
 
+            {errors.dimensions && <span id="dimensions-error" className={styles.formError} role="alert">{errors.dimensions}</span>}
+
             <div className={styles.formField}>
-              <label>Optional Design File or Photo (.pdf, .png, .jpg, .ai)</label>
+              <label htmlFor="attachment">Optional Design File or Photo (.pdf, .png, .jpg, .ai; max 10 MB)</label>
               <input
+                id="attachment"
+                ref={attachmentInputRef}
                 type="file"
                 accept=".pdf,.ai,.eps,.svg,.png,.jpg,.jpeg"
+                aria-invalid={Boolean(errors.attachment)}
+                aria-describedby={errors.attachment ? "attachment-error" : undefined}
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
-                    setSelectedFile(e.target.files[0].name);
+                    setSelectedFile(e.target.files[0]);
+                  } else {
+                    setSelectedFile(null);
                   }
+                  setErrors((curr) => ({ ...curr, attachment: "" }));
                 }}
               />
+              {errors.attachment && <span id="attachment-error" className={styles.formError} role="alert">{errors.attachment}</span>}
             </div>
 
             <div className={styles.formField}>
-              <label>Additional Notes / Product Weight</label>
+              <label htmlFor="requirements">Additional Notes / Product Weight</label>
               <textarea
+                id="requirements"
                 rows={3}
                 placeholder="Product weight, delivery city, special packing needs..."
                 value={form.requirements}
@@ -1095,7 +1253,7 @@ export default function HomeExperience() {
             </button>
 
             {submitMessage && (
-              <div className={styles.successMsg}>
+              <div id="form-status" className={styles.successMsg} role="status" aria-live="polite">
                 {submitMessage}
               </div>
             )}

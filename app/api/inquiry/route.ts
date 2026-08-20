@@ -1,66 +1,95 @@
 import { NextResponse } from "next/server";
 
-function buildInquiryMessage(body: Record<string, unknown>) {
-  return [
-    `New inquiry from ${body.company}`,
-    `Name: ${body.name}`,
-    `Company: ${body.company}`,
-    `Phone: ${body.phone}`,
-    `Email: ${body.email}`,
-    `Industry: ${body.industry || "Not specified"}`,
-    `Box Type: ${body.boxType || "Not specified"}`,
-    `Dimensions: ${body.length || "-"} x ${body.width || "-"} x ${body.height || "-"}`,
-    `Quantity: ${body.quantity || "Not specified"}`,
-    `Printing: ${body.printing || "Not specified"}`,
-    `Requirements: ${body.requirements || "No additional notes"}`
-  ].join("\n");
+const ALLOWED_FILE_EXTENSIONS = new Set(["pdf", "ai", "eps", "svg", "png", "jpg", "jpeg"]);
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const FORMSPREE_TIMEOUT_MS = 15_000;
+
+function getText(formData: FormData, name: string) {
+  const value = formData.get(name);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isAttachment(value: FormDataEntryValue | null): value is File {
+  return typeof value !== "string" && value !== null && typeof value.name === "string" && typeof value.size === "number";
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const incomingFormData = await request.formData();
+    const body = Object.fromEntries(
+      ["company", "name", "phone", "email", "industry", "boxType", "ply", "length", "width", "height", "unit", "quantity", "printing", "requirements", "source"]
+        .map((name) => [name, getText(incomingFormData, name)])
+    ) as Record<string, string>;
+    const potentialAttachment = incomingFormData.get("attachment");
+    const attachment = isAttachment(potentialAttachment) && potentialAttachment.size > 0 ? potentialAttachment : undefined;
+    const quantity = Number(body.quantity);
+    const dimensions = [body.length, body.width, body.height].map(Number);
 
-    if (!body?.name || !body?.email || !body?.phone || !body?.company) {
+    if (
+      !body.name || !body.company ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) ||
+      !/^[6-9]\d{9}$/.test(body.phone) ||
+      !Number.isInteger(quantity) || quantity <= 0 ||
+      dimensions.some((value) => !Number.isFinite(value) || value <= 0)
+    ) {
       return NextResponse.json(
-        { message: "Please fill in your company, name, email, and phone number." },
+        { message: "Please provide a valid company, name, email, 10-digit mobile number, positive dimensions, and quantity." },
         { status: 400 }
       );
     }
 
-    const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || "garg00445@gmail.com";
-    const formId = process.env.FORMSPREE_FORM_ID || "xaqrgjay";
-    const message = buildInquiryMessage(body);
-
-    const formPayload = new URLSearchParams();
-    Object.entries(body as Record<string, unknown>).forEach(([key, value]) => {
-      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-        formPayload.set(key, String(value));
+    if (attachment) {
+      const extension = attachment.name.split(".").pop()?.toLowerCase();
+      if (!extension || !ALLOWED_FILE_EXTENSIONS.has(extension) || attachment.size > MAX_FILE_SIZE_BYTES) {
+        return NextResponse.json(
+          { message: "Attachments must be PDF, AI, EPS, SVG, PNG, or JPG files no larger than 10 MB." },
+          { status: 400 }
+        );
       }
-    });
-
-    const formspreeResponse = await fetch(`https://formspree.io/f/${formId}`, {
-      method: "POST",
-      headers: { Accept: "application/json" },
-      body: formPayload
-    });
-
-    if (!formspreeResponse.ok) {
-      throw new Error("Formspree rejected the submission.");
     }
 
-    console.log(`[Inquiry] ${message}`);
+    const formId = process.env.FORMSPREE_FORM_ID || "xaqrgjay";
+    const formspreePayload = new FormData();
+    Object.entries(body).forEach(([key, value]) => formspreePayload.append(key, value));
 
-    const mailtoLink = `mailto:${ownerEmail}?subject=${encodeURIComponent("New GTC inquiry")}&body=${encodeURIComponent(message)}`;
+    let formspreeResponse: Response;
+    try {
+      formspreeResponse = await fetch(`https://formspree.io/f/${formId}`, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: formspreePayload,
+        signal: AbortSignal.timeout(FORMSPREE_TIMEOUT_MS)
+      });
+    } catch (error) {
+      console.error("[Inquiry] Formspree request failed", error);
+      return NextResponse.json(
+        { message: "Our inquiry service is temporarily unavailable. Please try again shortly." },
+        { status: 502 }
+      );
+    }
+
+    if (!formspreeResponse.ok) {
+      let responseBody = await formspreeResponse.text();
+
+      console.error("[Inquiry] Formspree rejected submission", {
+        status: formspreeResponse.status,
+        responseBody: responseBody.slice(0, 500)
+      });
+      return NextResponse.json(
+        { message: "Your inquiry could not be delivered. Please try again shortly." },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Thanks! Your inquiry was sent successfully.",
-      mailtoLink
+      attachmentAccepted: !attachment,
+      message: attachment
+        ? "Your quotation request has been sent. Please share the image or design file through WhatsApp. our team will contact you shortly."
+        : "Thanks! Your inquiry was sent successfully."
     });
   } catch (error) {
-    return NextResponse.json(
-      { message: "Unable to process your inquiry right now." },
-      { status: 500 }
-    );
+    console.error("[Inquiry] Unable to process submission", error);
+    return NextResponse.json({ message: "Unable to process your inquiry right now." }, { status: 500 });
   }
 }

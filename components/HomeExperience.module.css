@@ -98,6 +98,27 @@
   color: var(--accent-primary);
 }
 
+.navLinks a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.25rem;
+  height: 2px;
+  background: var(--accent-primary);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 180ms ease;
+}
+
+.navLinks a.navLinkActive {
+  color: var(--accent-primary);
+}
+
+.navLinks a.navLinkActive::after {
+  transform: scaleX(1);
+}
+
 .navActions {
   display: flex;
   align-items: center;
@@ -145,6 +166,10 @@
   background: var(--accent-secondary);
   transform: translateY(-1px);
   box-shadow: 0 6px 20px var(--accent-glow);
+
+.quoteNavBtn.quoteNavBtnActive {
+  box-shadow: 0 0 0 3px var(--accent-subtle), 0 4px 14px rgba(0, 0, 0, 0.18);
+}
 }
 
 .mobileMenuBtn {
@@ -222,6 +247,11 @@
 
 .mobileDrawerNav a:hover {
   background: var(--bg-surface-raised);
+  color: var(--accent-primary);
+}
+
+.mobileDrawerNav a.mobileNavLinkActive {
+  background: var(--accent-subtle);
   color: var(--accent-primary);
 }
 
